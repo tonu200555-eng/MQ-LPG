@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HYPERION / The Demand That Predicts Itself</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Libraries -->
+    <script src="https://unpkg.com/@studio-freight/lenis@1.0.29/dist/lenis.min.js"></script>
+    <script src="https://unpkg.com/scrollama@3.2.0/build/scrollama.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --white: #FFFFFF;
+            --almost-white: #FAFBFC;
+            --soft-gray: #E8ECEF;
+            --text-primary: #1A1F2E;
+            --text-secondary: #5A6472;
+            --accent-cyan: #CFFAFB;
+            --accent-lilac: #A5B4FF;
+            --accent-blue: #C6E1FF;
+            --gradient-mist: linear-gradient(135deg, rgba(207, 250, 251, 0.3), rgba(165, 180, 255, 0.2));
+        }
+
+        body {
+            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--white);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.7;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .section {
+            min-height: 175vh;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8rem 5vw;
+        }
+
+        .section--tall {
+            min-height: 200vh;
+        }
+
+        .section__content {
+            max-width: 1000px;
+            width: 100%;
+            opacity: 0;
+            transform: translateY(60px);
+            transition: opacity 2.5s cubic-bezier(0.645, 0.045, 0.355, 1),
+                        transform 2.5s cubic-bezier(0.645, 0.045, 0.355, 1);
+        }
+
+        .section__content.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .section--pinned {
+            height: 300vh;
+        }
+
+        .section--pinned .sticky-container {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        h1 {
+            font-size: clamp(3rem, 8vw, 7rem);
+            font-weight: 300;
+            line-height: 1.1;
+            margin-bottom: 2rem;
+            letter-spacing: -0.02em;
+        }
+
+        h2 {
+            font-size: clamp(2rem, 5vw, 4.5rem);
+            font-weight: 400;
+            line-height: 1.2;
+            margin-bottom: 2rem;
+            letter-spacing: -0.01em;
+        }
+
+        h3 {
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+        }
+
+        p {
+            font-size: clamp(1.1rem, 2vw, 1.4rem);
+            line-height: 1.8;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin-bottom: 1.5rem;
+        }
+
+        .gradient-bg {
+            position: absolute;
+            inset: 0;
+            background: var(--gradient-mist);
+            opacity: 0.6;
+            transition: transform 0.5s ease-out;
+        }
+
+        .metric {
+            font-size: clamp(3rem, 6vw, 5rem);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 1rem 0;
+            display: block;
+        }
+
+        .metric-label {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 500;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 3rem;
+            margin: 3rem 0;
+        }
+
+        #chart-container,
+        #scatter-container,
+        #network-container,
+        #bar-container,
+        #stream-container {
+            width: 100%;
+            height: 400px;
+            margin: 3rem 0;
+        }
+
+        .icon-orbit {
+            width: 500px;
+            height: 500px;
+            position: relative;
+            margin: 4rem auto;
+        }
+
+        .orbit-item {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            transition: all 0.8s cubic-bezier(0.645, 0.045, 0.355, 1);
+        }
+
+        .data-stream {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+        }
+
+        .stream-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-lilac), transparent);
+            animation: stream 3s ease-in-out infinite;
+        }
+
+        @keyframes stream {
+            0% { transform: translateX(-100%); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(200%); opacity: 0; }
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(26, 31, 46, 0.95);
+            color: white;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+
+        .world-map {
+            width: 100%;
+            height: 500px;
+            position: relative;
+            background: radial-gradient(circle at center, var(--accent-cyan) 0%, transparent 70%);
+            overflow: hidden;
+        }
+
+        .pulse-line {
+            position: absolute;
+            height: 2px;
+            background: var(--accent-lilac);
+            animation: pulse 2s ease-in-out infinite;
+            opacity: 0.7;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scaleX(0.95); }
+            50% { opacity: 0.8; transform: scaleX(1.05); }
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 3s ease-in-out;
+        }
+
+        .logo.visible {
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .section {
+                min-height: 150vh;
+                padding: 4rem 5vw;
+            }
+            
+            .icon-orbit {
+                width: 300px;
+                height: 300px;
+            }
+            
+            .orbit-item {
+                width: 60px;
+                height: 60px;
+                font-size: 0.7rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Section 1: Arrival -->
+    <section class="section section--tall" data-section="1">
+        <div class="gradient-bg" id="gradient-1"></div>
+        <div class="section__content">
+            <h1>HYPERION</h1>
+            <h2>The Demand That Predicts Itself</h2>
+            <p>Energy demand breathes in rhythm.<br>
+            HYPERION listens—and forecasts the next beat.</p>
+        </div>
+    </section>
+
+    <!-- Section 2: Problem Context -->
+    <section class="section" data-section="2">
+        <div class="section__content">
+            <h2>Predicting LPG demand is a puzzle of weather, economy, and habit.</h2>
+            <p>Experience once guided it; now intelligence sees what intuition can't.</p>
+            <div class="world-map" id="world-map">
+                <div class="pulse-line" style="top: 30%; left: 20%; width: 40%; transform: rotate(-15deg);"></div>
+                <div class="pulse-line" style="top: 50%; left: 40%; width: 35%; transform: rotate(25deg);"></div>
+                <div class="pulse-line" style="top: 70%; left: 15%; width: 50%; transform: rotate(-8deg);"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 3: Data Flow (Pinned) -->
+    <section class="section section--pinned" data-section="3">
+        <div class="sticky-container">
+            <div class="section__content">
+                <h2>Each month, thousands of records arrive—</h2>
+                <p>consumption, temperature, seasonality.<br>
+                HYPERION reads the melody hidden inside numbers.</p>
+                <div id="stream-container"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 4A: XGBoost -->
+    <section class="section section--tall" data-section="4a">
+        <div class="section__content">
+            <h2>XGBoost: The Model as Instrument</h2>
+            <p>
+                <span class="metric" id="trees-counter">0</span>
+                <span class="metric-label">trees trained on 240 months.</span>
+            </p>
+            <p>Each corrects the last until MAPE = 
+                <span class="metric" style="display: inline; font-size: 2.5rem;" id="mape-counter">10.0</span>%,
+                <br>60% better than old linear models.<br>
+                Precision at industrial scale.
+            </p>
+            <div id="tree-viz" style="width: 100%; height: 300px; margin: 3rem 0;"></div>
+        </div>
+    </section>
+
+    <!-- Section 4B: Toolchain -->
+    <section class="section" data-section="4b">
+        <div class="section__content">
+            <h2>Toolchain</h2>
+            <div class="icon-orbit" id="orbit-container">
+                <div class="orbit-item" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">Core</div>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <p><strong>Pandas</strong> cleans <span id="rows-counter">0</span> rows.</p>
+                    <p><strong>NumPy</strong> handles millions of ops.</p>
+                </div>
+                <div>
+                    <p><strong>Scikit-learn</strong> validates.</p>
+                    <p><strong>D3.js</strong> turns math into motion.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 4C: Resilience -->
+    <section class="section" data-section="4c">
+        <div class="section__content">
+            <h2>Resilience</h2>
+            <p>Cross-validation across four folds; no overfit.<br>
+            Feature influence: Temp 41%, Season 33%, Growth 18%, Noise 8%.<br>
+            Prediction with reason.</p>
+            <div id="bar-container"></div>
+        </div>
+    </section>
+
+    <!-- Section 4D: Proof of Power -->
+    <section class="section" data-section="4d">
+        <div class="section__content">
+            <h2>Proof of Power</h2>
+            <div class="grid-2">
+                <div>
+                    <span class="metric" id="waste-counter">0</span>
+                    <span class="metric-label">less inventory waste</span>
+                </div>
+                <div>
+                    <span class="metric" id="shipment-counter">0</span>
+                    <span class="metric-label">faster shipments</span>
+                </div>
+                <div>
+                    <span class="metric" id="savings-counter">$0M</span>
+                    <span class="metric-label">saved</span>
+                </div>
+                <div>
+                    <span class="metric" id="runtime-counter">0</span>
+                    <span class="metric-label">forecast runtime</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 5: Forecast in Motion (Pinned) -->
+    <section class="section section--pinned" data-section="5">
+        <div class="sticky-container">
+            <div class="section__content">
+                <h2>Forecast in Motion</h2>
+                <p>Scroll forward—the future unfolds.<br>
+                The line extends, confidence band breathing around it.</p>
+                <div id="chart-container"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 6: Validation -->
+    <section class="section" data-section="6">
+        <div class="section__content">
+            <h2>Validation</h2>
+            <p>Accuracy verified on unseen months.<br>
+            Predicted vs actual—near-perfect correlation.</p>
+            <div id="scatter-container"></div>
+        </div>
+    </section>
+
+    <!-- Section 7: Business Translation -->
+    <section class="section" data-section="7">
+        <div class="section__content">
+            <h2>Business Translation</h2>
+            <p>Inventory meets demand.<br>
+            Trucks leave on time.<br>
+            Budgets anticipate seasons.</p>
+            <div style="width: 100%; height: 400px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); opacity: 0.3; border-radius: 12px; margin: 3rem 0;"></div>
+        </div>
+    </section>
+
+    <!-- Section 8: Strategic Leverage (Pinned) -->
+    <section class="section section--pinned" data-section="8">
+        <div class="sticky-container">
+            <div class="section__content">
+                <h2>Strategic Leverage</h2>
+                <p>Uncertainty shrinks.<br>
+                Reaction becomes prediction.<br>
+                Intuition becomes insight.</p>
+                <div style="width: 100%; height: 300px; display: flex; gap: 2rem; align-items: center; justify-content: center; margin: 3rem 0;">
+                    <div class="dashboard-panel" style="flex: 1; height: 200px; background: var(--soft-gray); border-radius: 8px; opacity: 0; transition: all 1.5s cubic-bezier(0.645, 0.045, 0.355, 1);"></div>
+                    <div class="dashboard-panel" style="flex: 1; height: 200px; background: var(--soft-gray); border-radius: 8px; opacity: 0; transition: all 1.5s cubic-bezier(0.645, 0.045, 0.355, 1); transition-delay: 0.3s;"></div>
+                    <div class="dashboard-panel" style="flex: 1; height: 200px; background: var(--soft-gray); border-radius: 8px; opacity: 0; transition: all 1.5s cubic-bezier(0.645, 0.045, 0.355, 1); transition-delay: 0.6s;"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 9: Expansion -->
+    <section class="section" data-section="9">
+        <div class="section__content">
+            <h2>Expansion</h2>
+            <p>Freight. Finance. Healthcare. Agriculture.<br>
+            Wherever data moves through time, HYPERION learns.</p>
+            <div class="grid-2" style="margin-top: 4rem;">
+                <div style="height: 200px; background: linear-gradient(135deg, rgba(207, 250, 251, 0.4), rgba(165, 180, 255, 0.2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 500;">Freight</div>
+                <div style="height: 200px; background: linear-gradient(135deg, rgba(165, 180, 255, 0.4), rgba(198, 225, 255, 0.2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 500;">Finance</div>
+                <div style="height: 200px; background: linear-gradient(135deg, rgba(198, 225, 255, 0.4), rgba(207, 250, 251, 0.2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 500;">Healthcare</div>
+                <div style="height: 200px; background: linear-gradient(135deg, rgba(207, 250, 251, 0.4), rgba(165, 180, 255, 0.3)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 500;">Agriculture</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 10: Decision OS -->
+    <section class="section section--tall" data-section="10">
+        <div class="section__content">
+            <h2>Decision OS</h2>
+            <p>Modules communicating in a living network—<br>
+            models that learn from each other.</p>
+            <div id="network-container"></div>
+        </div>
+    </section>
+
+    <!-- Section 11: Finale -->
+    <section class="section section--tall" data-section="11" style="background: linear-gradient(180deg, var(--white) 0%, rgba(165, 180, 255, 0.15) 100%);">
+        <div class="section__content">
+            <h2>Forecasting becomes geometry:</h2>
+            <p style="font-size: 1.6rem; max-width: 800px;">
+                patterns → prediction → strategy.
+            </p>
+            <p style="margin-top: 3rem;">
+                The question isn't <em>can we know the future</em>—<br>
+                but how precisely we'll shape it.
+            </p>
+            <div class="logo" id="final-logo" style="margin-top: 6rem;">HYPERION</div>
+        </div>
+    </section>
+
+    <script>
+        // Initialize Lenis smooth scrolling
+        const lenis = new Lenis({
+            duration: 1.2,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            direction: 'vertical',
+            smooth: true,
+            smoothTouch: false,
+        });
+
+        function raf(time) {
+            lenis.raf(time);
+            requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
+
+        // Scrollama setup
+        const scroller = scrollama();
+
+        scroller
+            .setup({
+                step: '.section',
+                offset: 0.5,
+                debug: false,
+            })
+            .onStepEnter(response => {
+                const section = response.element.dataset.section;
+                response.element.querySelector('.section__content').classList.add('active');
+                
+                // Trigger specific animations per section
+                switch(section) {
+                    case '1':
+                        animateGradient();
+                        break;
+                    case '3':
+                        createDataStream();
+                        break;
+                    case '4a':
+                        animateCounters();
+                        createTreeViz();
+                        break;
+                    case '4b':
+                        animateOrbit();
+                        animateRowsCounter();
+                        break;
+                    case '4c':
+                        createBarChart();
+                        break;
+                    case '4d':
+                        animateMetrics();
+                        break;
+                    case '5':
+                        createForecastChart();
+                        break;
+                    case '6':
+                        createScatterPlot();
+                        break;
+                    case '8':
+                        showDashboards();
+                        break;
+                    case '10':
+                        createNetworkGraph();
+                        break;
+                    case '11':
+                        document.getElementById('final-logo').classList.add('visible');
+                        break;
+                }
+            });
+
+        // Parallax effect for gradient
+        function animateGradient() {
+            const gradient = document.getElementById('gradient-1');
+            let ticking = false;
+            
+            window.addEventListener('scroll', () => {
+                if (!ticking) {
+                    window.requestAnimationFrame(() => {
+                        const scrolled = window.pageYOffset;
+                        const scale = 1 + scrolled * 0.0005;
+                        gradient.style.transform = `scale(${Math.min(scale, 1.2)})`;
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            });
+        }
+
+        // Data stream animation
+        function createDataStream() {
+            const container = d3.select('#stream-container');
+            const width = container.node().getBoundingClientRect().width;
+            const height = 400;
+
+            const svg = container.append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Create flowing particles
+            const particles = d3.range(50).map(() => ({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2,
+                r: Math.random() * 3 + 1
+            }));
+
+            const dots = svg.selectAll('circle')
+                .data(particles)
+                .enter()
+                .append('circle')
+                .attr('r', d => d.r)
+                .attr('fill', '#A5B4FF')
+                .attr('opacity', 0.6);
+
+            function update() {
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    
+                    if (p.x < 0 || p.x > width) p.vx *= -1;
+                    if (p.y < 0 || p.y > height) p.vy *= -1;
+                    
+                    // Converge toward center
+                    p.vx += (width / 2 - p.x) * 0.0001;
+                    p.vy += (height / 2 - p.y) * 0.0001;
+                });
+
+                dots
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+            }
+
+            d3.interval(update, 30);
+        }
+
+        // Counter animations
+        function animateCounters() {
+            animateCounter('trees-counter', 0, 1200, 2500, 0);
+            animateCounter('mape-counter', 10, 3.8, 2500, 1);
+        }
+
+        function animateCounter(id, start, end, duration, decimals) {
+            const element = document.getElementById(id);
+            const startTime = performance.now();
+
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = d3.easeCubicInOut(progress);
+                const value = start + (end - start) * eased;
+                
+                element.textContent = value.toFixed(decimals);
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+
+            requestAnimationFrame(update);
+        }
+
+        // Tree visualization
+        function createTreeViz() {
+            const container = d3.select('#tree-viz');
+            const width = container.node().getBoundingClientRect().width;
+            const height = 300;
+
+            const svg = container.append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const trees = d3.range(12).map((d, i) => ({
+                x: (i % 6) * (width / 6) + 50,
+                y: Math.floor(i / 6) * 150 + 50,
+                opacity: 0
+            }));
+
+            svg.selectAll('line')
+                .data(trees)
+                .enter()
+                .append('line')
+                .attr('x1', d => d.x)
+                .attr('y1', d => d.y + 40)
+                .attr('x2', d => d.x)
+                .attr('y2', d => d.y)
+                .attr('stroke', '#A5B4FF')
+                .attr('stroke-width', 3)
+                .attr('opacity', 0)
+                .transition()
+                .delay((d, i) => i * 100)
+                .duration(800)
+                .attr('opacity', 0.8);
+
+            svg.selectAll('circle')
+                .data(trees)
+                .enter()
+                .append('circle')
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y)
+                .attr('r', 0)
+                .attr('fill', '#CFFAFB')
+                .transition()
+                .delay((d, i) => i * 100)
+                .duration(800)
+                .attr('r', 8);
+        }
+
+        // Orbit animation
+        function animateOrbit() {
+            const tools = ['Pandas', 'NumPy', 'Scikit', 'D3.js'];
+            const container = document.getElementById('orbit-container');
+            const centerX = 250;
+            const centerY = 250;
+            const radius = 180;
+
+            tools.forEach((tool, i) => {
+                const angle = (i / tools.length) * Math.PI * 2;
+                const x = centerX + Math.cos(angle) * radius - 40;
+                const y = centerY + Math.sin(angle) * radius - 40;
+
+                const item = document.createElement('div');
+                item.className = 'orbit-item';
+                item.textContent = tool;
+                item.style.left = centerX - 40 + 'px';
+                item.style.top = centerY - 40 + 'px';
+                item.style.opacity = '0';
+                container.appendChild(item);
+
+                setTimeout(() => {
+                    item.style.left = x + 'px';
+                    item.style.top = y + 'px';
+                    item.style.opacity = '1';
+                }, i * 200);
+            });
+
+            // Rotate orbit
+            let rotation = 0;
+            setInterval(() => {
+                rotation += 0.5;
+                container.style.transform = `rotate(${rotation}deg)`;
+            }, 50);
+        }
+
+        function animateRowsCounter() {
+            animateCounter('rows-counter', 0, 14000, 2000, 0);
+        }
+
+        // Bar chart for feature importance
+        function createBarChart() {
+            const data = [
+                { label: 'Temperature', value: 41 },
+                { label: 'Seasonality', value: 33 },
+                { label: 'Growth', value: 18 },
+                { label: 'Noise', value: 8 }
+            ];
+
+            const container = d3.select('#bar-container');
+            const width = container.node().getBoundingClientRect().width;
+            const height = 400;
+            const margin = { top: 20, right: 20, bottom: 60, left: 60 };
+
+            const svg = container.append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const x = d3.scaleBand()
+                .domain(data.map(d => d.label))
+                .range([margin.left, width - margin.right])
+                .padding(0.3);
+
+            const y = d3.scaleLinear()
+                .domain([0, 50])
+                .range([height - margin.bottom, margin.top]);
+
+            svg.selectAll('rect')
+                .data(data)
+                .enter()
+                .append('rect')
+                .attr('x', d => x(d.label))
+                .attr('y', height - margin.bottom)
+                .attr('width', x.bandwidth())
+                .attr('height', 0)
+                .attr('fill', '#A5B4FF')
+                .attr('rx', 4)
+                .transition()
+                .duration(1500)
+                .delay((d, i) => i * 200)
+                .attr('y', d => y(d.value))
+                .attr('height', d => height - margin.bottom - y(d.value));
+
+            svg.selectAll('text.label')
+                .data(data)
+                .enter()
+                .append('text')
+                .attr('class', 'label')
+                .attr('x', d => x(d.label) + x.bandwidth() / 2)
+                .attr('y', height - margin.bottom + 20)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '14px')
+                .attr('fill', '#5A6472')
+                .text(d => d.label);
+
+            svg.selectAll('text.value')
+                .data(data)
+                .enter()
+                .append('text')
+                .attr('class', 'value')
+                .attr('x', d => x(d.label) + x.bandwidth() / 2)
+                .attr('y', d => y(d.value) - 10)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '16px')
+                .attr('font-weight', '600')
+                .attr('fill', '#1A1F2E')
+                .attr('opacity', 0)
+                .text(d => d.value + '%')
+                .transition()
+                .duration(1500)
+                .delay((d, i) => i * 200 + 1000)
+                .attr('opacity', 1);
+        }
+
+        // Metrics animation
+        function animateMetrics() {
+            animateCounter('waste-counter', 0, 12, 2000, 0, '%');
+            animateCounter('shipment-counter', 0, 18, 2000, 0, '%');
+            setTimeout(() => {
+                animateCounter('savings-counter', 0, 4.7, 2000, 1, 'M', '$');
+            }, 300);
+            setTimeout(() => {
+                const element = document.getElementById('runtime-counter');
+                animateCounter('runtime-counter', 0, 1.3, 2000, 1, 's', '');
+            }, 600);
+        }
+
+        function animateCounter(id, start, end, duration, decimals, suffix = '', prefix = '') {
+            const element = document.getElementById(id);
+            const startTime = performance.now();
+
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = d3.easeCubicInOut(progress);
+                const value = start + (end - start) * eased;
+                
+                element.textContent = prefix + value.toFixed(decimals) + suffix;
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+
+            requestAnimationFrame(update);
+        }
+
+        // Forecast chart with confidence band
+        function createForecastChart() {
+            const container = d3.select('#chart-container');
+            const width = container.node().getBoundingClientRect().width;
+            const height = 400;
+            const margin = { top: 20, right: 20, bottom: 40, left: 50 };
+
+            const svg = container.append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Generate data
+            const historical = d3.range(24).map(i => ({
+                month: i,
+                value: 50 + Math.sin(i / 3) * 15 + Math.random() * 5
+            }));
+
+            const forecast = d3.range(24, 36).map(i => ({
+                month: i,
+                value: 50 + Math.sin(i / 3) * 15,
+                upper: 55 + Math.sin(i / 3) * 15,
+                lower: 45 + Math.sin(i / 3) * 15
+            }));
+
+            const x = d3.scaleLinear()
+                .domain([0, 36])
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scaleLinear()
+                .domain([20, 80])
+                .range([height - margin.bottom, margin.top]);
+
+            // Confidence band
+            const area = d3.area()
+                .x(d => x(d.month))
+                .y0(d => y(d.lower))
+                .y1(d => y(d.upper))
+                .curve(d3.curveCatmullRom);
+
+            svg.append('path')
+                .datum(forecast)
+                .attr('fill', '#C6E1FF')
+                .attr('opacity', 0.4)
+                .attr('d', area);
+
+            // Historical line
+            const line = d3.line()
+                .x(d => x(d.month))
+                .y(d => y(d.value))
+                .curve(d3.curveCatmullRom);
+
+            const historicalPath = svg.append('path')
+                .datum(historical)
+                .attr('fill', 'none')
+                .attr('stroke', '#1A1F2E')
+                .attr('stroke-width', 2.5)
+                .attr('d', line);
+
+            const historicalLength = historicalPath.node().getTotalLength();
+
+            historicalPath
+                .attr('stroke-dasharray', historicalLength)
+                .attr('stroke-dashoffset', historicalLength)
+                .transition()
+                .duration(2000)
+                .attr('stroke-dashoffset', 0);
+
+            // Forecast line
+            const forecastPath = svg.append('path')
+                .datum(forecast)
+                .attr('fill', 'none')
+                .attr('stroke', '#A5B4FF')
+                .attr('stroke-width', 2.5)
+                .attr('stroke-dasharray', '5,5')
+                .attr('d', line);
+
+            const forecastLength = forecastPath.node().getTotalLength();
+
+            forecastPath
+                .attr('stroke-dasharray', forecastLength)
+                .attr('stroke-dashoffset', forecastLength)
+                .transition()
+                .delay(2000)
+                .duration(1500)
+                .attr('stroke-dashoffset', 0);
+
+            // Axes
+            svg.append('g')
+                .attr('transform', `translate(0,${height - margin.bottom})`)
+                .call(d3.axisBottom(x).ticks(12))
+                .attr('color', '#5A6472');
+
+            svg.append('g')
+                .attr('transform', `translate(${margin.left},0)`)
+                .call(d3.axisLeft(y))
+                .attr('color', '#5A6472');
+        }
+
+        // Scatter plot
+        function createScatterPlot() {
+            const container = d3.select('#scatter-container');
+            const width = container.node().getBoundingClientRect().width;
+            const height = 400;
+            const margin = { top: 20, right: 20, bottom: 50, left: 50 };
+
+            const svg = container.append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Generate correlated data
+            const data = d3.range(50).map(i => {
+                const actual = 30 + Math.random() * 40;
+                const predicted = actual + (Math.random() - 0.5) * 5;
+                return { actual, predicted };
+            });
+
+            const x = d3.scaleLinear()
+                .domain([20, 80])
+                .range([margin.left, width - margin.right]);
+
+            const y = d3.scaleLinear()
+                .domain([20, 80])
+                .range([height - margin.bottom, margin.top]);
+
+            // Perfect correlation line
+            svg.append('line')
+                .attr('x1', x(20))
+                .attr('y1', y(20))
+                .attr('x2', x(20))
+                .attr('y2', y(20))
+                .attr('stroke', '#CFFAFB')
+                .attr('stroke-width', 2)
+                .attr('stroke-dasharray', '4,4')
+                .transition()
+                .duration(2000)
+                .attr('x2', x(80))
+                .attr('y2', y(80));
+
+            // Scatter points
+            svg.selectAll('circle')
+                .data(data)
+                .enter()
+                .append('circle')
+                .attr('cx', d => x(d.actual))
+                .attr('cy', d => y(d.predicted))
+                .attr('r', 0)
+                .attr('fill', '#A5B4FF')
+                .attr('opacity', 0.6)
+                .transition()
+                .delay((d, i) => i * 30 + 500)
+                .duration(500)
+                .attr('r', 5);
+
+            // Axes
+            svg.append('g')
+                .attr('transform', `translate(0,${height - margin.bottom})`)
+                .call(d3.axisBottom(x))
+                .attr('color', '#5A6472');
+
+            svg.append('text')
+                .attr('x', width / 2)
+                .attr('y', height - 5)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '12px')
+                .attr('fill', '#5A6472')
+                .text('Actual');
+
+            svg.append('g')
+                .attr('transform', `translate(${margin.left},0)`)
+                .call(d3.axisLeft(y))
+                .attr('color', '#5A6472');
+
+            svg.append('text')
+                .attr('transform', 'rotate(-90)')
+                .attr('x', -height / 2)
+                .attr('y', 15)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '12px')
+                .attr('fill', '#5A6472')
+                .text('Predicted');
+        }
+
+        // Dashboard panels
+        function showDashboards() {
+            const panels = document.querySelectorAll('.dashboard-panel');
+            panels.forEach(panel => {
+                panel.style.opacity = '1';
+                panel.style.filter = 'blur(0)';
+            });
+        }
+
+        // Network graph
+        function createNetworkGraph() {
+            const container = d3.select('#network-container');
+            const width = container.node().getBoundingClientRect().width;
+            const height = 400;
+
+            const svg = container.append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            const nodes = [
+                { id: 'HYPERION', x: width / 2, y: height / 2, r: 30 },
+                { id: 'Data', x: width / 2 - 150, y: height / 2 - 100, r: 20 },
+                { id: 'Model', x: width / 2 + 150, y: height / 2 - 100, r: 20 },
+                { id: 'Forecast', x: width / 2 - 150, y: height / 2 + 100, r: 20 },
+                { id: 'Strategy', x: width / 2 + 150, y: height / 2 + 100, r: 20 }
+            ];
+
+            const links = [
+                { source: nodes[0], target: nodes[1] },
+                { source: nodes[0], target: nodes[2] },
+                { source: nodes[0], target: nodes[3] },
+                { source: nodes[0], target: nodes[4] }
+            ];
+
+            // Links
+            svg.selectAll('line')
+                .data(links)
+                .enter()
+                .append('line')
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.source.x)
+                .attr('y2', d => d.source.y)
+                .attr('stroke', '#C6E1FF')
+                .attr('stroke-width', 2)
+                .transition()
+                .delay((d, i) => i * 200)
+                .duration(1000)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            // Nodes
+            const nodeGroups = svg.selectAll('g')
+                .data(nodes)
+                .enter()
+                .append('g');
+
+            nodeGroups.append('circle')
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y)
+                .attr('r', 0)
+                .attr('fill', (d, i) => i === 0 ? '#A5B4FF' : '#CFFAFB')
+                .attr('opacity', 0.8)
+                .transition()
+                .delay((d, i) => i * 200 + 500)
+                .duration(800)
+                .attr('r', d => d.r);
+
+            nodeGroups.append('text')
+                .attr('x', d => d.x)
+                .attr('y', d => d.y)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .attr('font-size', '12px')
+                .attr('font-weight', '600')
+                .attr('fill', '#1A1F2E')
+                .attr('opacity', 0)
+                .text(d => d.id)
+                .transition()
+                .delay((d, i) => i * 200 + 1300)
+                .duration(500)
+                .attr('opacity', 1);
+        }
+
+        // Window resize handler
+        window.addEventListener('resize', () => {
+            scroller.resize();
+        });
+    </script>
+</body>
+</html>
