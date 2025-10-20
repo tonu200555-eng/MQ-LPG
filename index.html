@@ -22,7 +22,8 @@
             box-sizing: border-box;
         }
 
-        html {
+        html, body {
+            width: 100%;
             overflow-x: hidden;
         }
 
@@ -42,21 +43,18 @@
             font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--white);
             color: var(--text-primary);
-            overflow-x: hidden;
             line-height: 1.7;
             -webkit-font-smoothing: antialiased;
-            width: 100%;
-            position: relative;
         }
 
         .section {
             min-height: 100vh;
+            width: 100%;
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 8rem 5vw;
-            overflow: hidden;
+            padding: 4rem 2rem;
         }
 
         .section--tall {
@@ -67,12 +65,12 @@
         .parallax-bg {
             position: absolute;
             top: -20%;
-            left: -10%;
-            width: 120%;
+            left: 0;
+            right: 0;
+            width: 100%;
             height: 175vh;
             z-index: -1;
             will-change: transform;
-            transition: transform 0.1s linear;
         }
 
         .parallax-bg img {
@@ -105,16 +103,13 @@
         .section__content {
             max-width: 1000px;
             width: 100%;
-            opacity: 0;
-            transform: translateY(60px) scale(0.98);
-            transition: all 2s cubic-bezier(0.19, 1, 0.22, 1);
+            margin: 0 auto;
             position: relative;
             z-index: 1;
         }
 
-        .section__content.active {
-            opacity: 1;
-            transform: translateY(0) scale(1);
+        .section__content.fade-in {
+            animation: fadeInUp 1.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
         }
 
         .section--pinned {
@@ -125,10 +120,11 @@
             position: sticky;
             top: 0;
             height: 100vh;
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 100%;
+            padding: 4rem 2rem;
         }
 
         h1 {
@@ -137,7 +133,6 @@
             line-height: 1.1;
             margin-bottom: 2rem;
             letter-spacing: -0.02em;
-            animation: fadeInUp 1.5s cubic-bezier(0.19, 1, 0.22, 1) 0.2s both;
         }
 
         h2 {
@@ -146,7 +141,6 @@
             line-height: 1.2;
             margin-bottom: 2rem;
             letter-spacing: -0.01em;
-            animation: fadeInUp 1.5s cubic-bezier(0.19, 1, 0.22, 1) 0.4s both;
         }
 
         h3 {
@@ -161,7 +155,6 @@
             color: var(--text-secondary);
             max-width: 700px;
             margin-bottom: 1.5rem;
-            animation: fadeInUp 1.5s cubic-bezier(0.19, 1, 0.22, 1) 0.6s both;
         }
 
         @keyframes fadeInUp {
@@ -220,7 +213,6 @@
             max-width: 100%;
             height: 400px;
             margin: 3rem 0;
-            overflow: hidden;
         }
 
         .icon-orbit {
@@ -353,11 +345,22 @@
             transform: translateY(0);
         }
 
+        /* Container for dashboard panels */
+        .dashboard-container {
+            width: 100%;
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            justify-content: center;
+            margin: 3rem 0;
+            flex-wrap: wrap;
+        }
+
         /* Improved responsive design */
         @media (max-width: 768px) {
             .section {
                 min-height: 100vh;
-                padding: 4rem 5vw;
+                padding: 3rem 1rem;
             }
             
             .icon-orbit {
@@ -375,16 +378,15 @@
                 grid-template-columns: 1fr;
                 gap: 2rem;
             }
-        }
 
-        /* Prevent horizontal scroll */
-        .section > * {
-            max-width: 100%;
-        }
+            .dashboard-container {
+                flex-direction: column;
+            }
 
-        svg {
-            max-width: 100%;
-            height: auto;
+            .dashboard-panel {
+                width: 100%;
+                max-width: 400px;
+            }
         }
     </style>
 </head>
@@ -549,7 +551,7 @@
             <p>Inventory meets demand.<br>
             Trucks leave on time.<br>
             Budgets anticipate seasons.</p>
-            <div style="width: 100%; height: 400px; background: linear-gradient(135deg, rgba(198, 225, 255, 0.3), rgba(207, 250, 251, 0.3)); border-radius: 20px; margin: 3rem 0; backdrop-filter: blur(10px);"></div>
+            <div style="width: 100%; height: 400px; background: linear-gradient(135deg, rgba(198, 225, 255, 0.3), rgba(207, 250, 251, 0.3)); border-radius: 20px; margin: 3rem 0;"></div>
         </div>
     </section>
 
@@ -564,7 +566,7 @@
                 <p>Uncertainty shrinks.<br>
                 Reaction becomes prediction.<br>
                 Intuition becomes insight.</p>
-                <div style="width: 100%; height: 300px; display: flex; gap: 2rem; align-items: center; justify-content: center; margin: 3rem 0;">
+                <div class="dashboard-container">
                     <div class="dashboard-panel"></div>
                     <div class="dashboard-panel"></div>
                     <div class="dashboard-panel"></div>
@@ -619,7 +621,7 @@
     </section>
 
     <script>
-        // Initialize Lenis smooth scrolling with better settings
+        // Initialize Lenis smooth scrolling
         const lenis = new Lenis({
             duration: 1.8,
             easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
@@ -649,58 +651,75 @@
             });
         });
 
-        // Scrollama setup
-        const scroller = scrollama();
+        // Intersection Observer for fade-in animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
 
-        scroller
-            .setup({
-                step: '.section',
-                offset: 0.5,
-                debug: false,
-            })
-            .onStepEnter(response => {
-                const section = response.element.dataset.section;
-                const content = response.element.querySelector('.section__content');
-                if (content) {
-                    content.classList.add('active');
-                }
-                
-                // Trigger specific animations per section
-                switch(section) {
-                    case '3':
-                        createDataStream();
-                        break;
-                    case '4a':
-                        animateCounters();
-                        createTreeViz();
-                        break;
-                    case '4b':
-                        animateOrbit();
-                        animateRowsCounter();
-                        break;
-                    case '4c':
-                        createBarChart();
-                        break;
-                    case '4d':
-                        animateMetrics();
-                        break;
-                    case '5':
-                        createForecastChart();
-                        break;
-                    case '6':
-                        createScatterPlot();
-                        break;
-                    case '8':
-                        showDashboards();
-                        break;
-                    case '10':
-                        createNetworkGraph();
-                        break;
-                    case '11':
-                        document.getElementById('final-logo').classList.add('visible');
-                        break;
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('fade-in');
+                    
+                    // Trigger section-specific animations
+                    const section = entry.target.closest('.section');
+                    if (section) {
+                        const sectionNum = section.dataset.section;
+                        triggerSectionAnimation(sectionNum);
+                    }
                 }
             });
+        }, observerOptions);
+
+        // Observe all section contents
+        document.querySelectorAll('.section__content').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Trigger section-specific animations
+        function triggerSectionAnimation(section) {
+            switch(section) {
+                case '3':
+                    setTimeout(() => createDataStream(), 500);
+                    break;
+                case '4a':
+                    setTimeout(() => {
+                        animateCounters();
+                        createTreeViz();
+                    }, 500);
+                    break;
+                case '4b':
+                    setTimeout(() => {
+                        animateOrbit();
+                        animateRowsCounter();
+                    }, 500);
+                    break;
+                case '4c':
+                    setTimeout(() => createBarChart(), 500);
+                    break;
+                case '4d':
+                    setTimeout(() => animateMetrics(), 500);
+                    break;
+                case '5':
+                    setTimeout(() => createForecastChart(), 500);
+                    break;
+                case '6':
+                    setTimeout(() => createScatterPlot(), 500);
+                    break;
+                case '8':
+                    setTimeout(() => showDashboards(), 500);
+                    break;
+                case '10':
+                    setTimeout(() => createNetworkGraph(), 500);
+                    break;
+                case '11':
+                    setTimeout(() => {
+                        document.getElementById('final-logo').classList.add('visible');
+                    }, 500);
+                    break;
+            }
+        }
 
         // Enhanced Data stream animation
         let streamCreated = false;
@@ -709,15 +728,19 @@
             streamCreated = true;
 
             const container = d3.select('#stream-container');
+            if (container.empty()) return;
+            
             container.selectAll('*').remove();
             
             const rect = container.node().getBoundingClientRect();
-            const width = rect.width;
+            const width = Math.max(rect.width, 100);
             const height = 400;
 
             const svg = container.append('svg')
                 .attr('width', width)
                 .attr('height', height)
+                .style('width', '100%')
+                .style('height', 'auto')
                 .attr('viewBox', `0 0 ${width} ${height}`)
                 .attr('preserveAspectRatio', 'xMidYMid meet');
 
@@ -831,15 +854,19 @@
             treeVizCreated = true;
 
             const container = d3.select('#tree-viz');
+            if (container.empty()) return;
+            
             container.selectAll('*').remove();
             
             const rect = container.node().getBoundingClientRect();
-            const width = rect.width;
+            const width = Math.max(rect.width, 100);
             const height = 300;
 
             const svg = container.append('svg')
                 .attr('width', width)
                 .attr('height', height)
+                .style('width', '100%')
+                .style('height', 'auto')
                 .attr('viewBox', `0 0 ${width} ${height}`)
                 .attr('preserveAspectRatio', 'xMidYMid meet');
 
@@ -915,6 +942,8 @@
 
             const tools = ['Pandas', 'NumPy', 'Scikit', 'D3.js'];
             const container = document.getElementById('orbit-container');
+            if (!container) return;
+            
             const rect = container.getBoundingClientRect();
             const centerX = rect.width / 2;
             const centerY = rect.height / 2;
@@ -976,16 +1005,20 @@
             ];
 
             const container = d3.select('#bar-container');
+            if (container.empty()) return;
+            
             container.selectAll('*').remove();
             
             const rect = container.node().getBoundingClientRect();
-            const width = rect.width;
+            const width = Math.max(rect.width, 100);
             const height = 400;
             const margin = { top: 20, right: 20, bottom: 60, left: 60 };
 
             const svg = container.append('svg')
                 .attr('width', width)
                 .attr('height', height)
+                .style('width', '100%')
+                .style('height', 'auto')
                 .attr('viewBox', `0 0 ${width} ${height}`)
                 .attr('preserveAspectRatio', 'xMidYMid meet');
 
@@ -1096,16 +1129,20 @@
             forecastCreated = true;
 
             const container = d3.select('#chart-container');
+            if (container.empty()) return;
+            
             container.selectAll('*').remove();
             
             const rect = container.node().getBoundingClientRect();
-            const width = rect.width;
+            const width = Math.max(rect.width, 100);
             const height = 400;
             const margin = { top: 20, right: 20, bottom: 40, left: 50 };
 
             const svg = container.append('svg')
                 .attr('width', width)
                 .attr('height', height)
+                .style('width', '100%')
+                .style('height', 'auto')
                 .attr('viewBox', `0 0 ${width} ${height}`)
                 .attr('preserveAspectRatio', 'xMidYMid meet');
 
@@ -1247,16 +1284,20 @@
             scatterCreated = true;
 
             const container = d3.select('#scatter-container');
+            if (container.empty()) return;
+            
             container.selectAll('*').remove();
             
             const rect = container.node().getBoundingClientRect();
-            const width = rect.width;
+            const width = Math.max(rect.width, 100);
             const height = 400;
             const margin = { top: 20, right: 20, bottom: 50, left: 50 };
 
             const svg = container.append('svg')
                 .attr('width', width)
                 .attr('height', height)
+                .style('width', '100%')
+                .style('height', 'auto')
                 .attr('viewBox', `0 0 ${width} ${height}`)
                 .attr('preserveAspectRatio', 'xMidYMid meet');
 
@@ -1372,15 +1413,19 @@
             networkCreated = true;
 
             const container = d3.select('#network-container');
+            if (container.empty()) return;
+            
             container.selectAll('*').remove();
             
             const rect = container.node().getBoundingClientRect();
-            const width = rect.width;
+            const width = Math.max(rect.width, 100);
             const height = 400;
 
             const svg = container.append('svg')
                 .attr('width', width)
                 .attr('height', height)
+                .style('width', '100%')
+                .style('height', 'auto')
                 .attr('viewBox', `0 0 ${width} ${height}`)
                 .attr('preserveAspectRatio', 'xMidYMid meet');
 
@@ -1501,8 +1546,6 @@
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(() => {
-                scroller.resize();
-                
                 // Clear and recreate visualizations on resize
                 streamCreated = false;
                 treeVizCreated = false;
@@ -1512,13 +1555,6 @@
                 networkCreated = false;
             }, 250);
         });
-
-        // Prevent horizontal scroll on mobile
-        document.addEventListener('touchmove', function(e) {
-            if (Math.abs(e.touches[0].clientX - e.touches[0].clientX) > 10) {
-                e.preventDefault();
-            }
-        }, { passive: false });
     </script>
 </body>
 </html>
